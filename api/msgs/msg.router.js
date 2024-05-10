@@ -66,12 +66,15 @@ router.post("/create-stripe-session-subscription",express.json(),
                     description: "Free Trial",
                   },
                   unit_amount: 0,
-                  recurring: { interval: "day", interval_count: 7 },
+                  recurring: { interval: "day", interval_count: 1 },
                 },
                 quantity: 1,
               },
             ],
             customer_email: userEmail,
+            subscription_data: {
+              trial_period_days: 7, // Offer a 7-day trial
+            },
           });
         } else {
 
@@ -97,6 +100,7 @@ router.post("/create-stripe-session-subscription",express.json(),
                   unit_amount: req.body.interval === "month" ? 20000 : 5000000,
                   recurring: {
                     interval: req.body.interval,
+                    interval_count: 1,
                   },
                 },
                 quantity: 1,
@@ -141,13 +145,13 @@ router.post("/webhook",bodyParser.raw({ type: "application/json" }),async (req, 
         event.data.object.customer
       );
   
-  
+  console.log(subscription)
       if (invoice.billing_reason === "subscription_create") {
   
         const subscriptionDocument = {
           userId: customer?.metadata?.userId,
           subId: event.data.object.subscription,
-          endDate: subscription.current_period_end * 1000,
+          endDate: new Date(subscription.current_period_end * 1000).toISOString().split('T')[0],
         };
         console.log(subscriptionDocument);
         try {
@@ -179,7 +183,7 @@ router.post("/webhook",bodyParser.raw({ type: "application/json" }),async (req, 
   
     try {
       pool.query(
-        'UPDATE bill SET endDate = ?, recurringSuccessful_test = true WHERE userId = ?',
+        'UPDATE bill SET endDate = ? WHERE userId = ?',
         [endDate, userId],
         (error, results, fields) => {
           if (error) {
